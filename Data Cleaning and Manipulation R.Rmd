@@ -1,0 +1,196 @@
+---
+title: "Assignment 9--R"
+author: "Insert your name here"
+date: "September 5, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load necessary libraries here.
+```{r}
+library(dplyr)
+library(readr)
+library(ggformula)
+```
+
+## Problem 1:  Colleges and Universities
+
+In this problem, you will do further cleaning and analysis of the data from the 1995 US News and World Report on colleges and universities in the US.
+
+a. In the Python portion of homework 9, you created a modified version of the data set usnews.csv.  Read the modified data into R.  Check the first few values of each vector to ensure that they were read correctly.
+
+```{r}
+usnews <- read_csv("usframe.csv")
+head(usnews)
+```
+
+b. Examine the summary of each variable.  Identify any unrealistic values and set them to missing.
+
+- It may be helpful to use control flow or functions to help organize your work.
+```{r}
+summary(usnews)
+```
+
+```{r}
+which(usnews$`IQR:Math` < 0)
+usnews$`IQR:Math`[usnews$`IQR:Math` == -10] <- NA
+```
+
+```{r}
+usnews$`Student/faculty ratio`[usnews$`Student/faculty ratio` > 50] <- NA
+```
+
+```{r}
+
+usnews$`Num applications received`[usnews$`Num applications received` > 40000] <- NA
+usnews$`Num applicants accepted`[usnews$`Num applicants accepted` > 25000] <- NA
+usnews$`Num students enrolled`[usnews$`Num students enrolled` == 4520] <- NA
+```
+
+
+```{r}
+summary(usnews)
+```
+
+
+ **Write a sentence** describing what you did, naming the colleges or universities affected.  (For example, "Listed ages less than zero (ABC University, XYZ College) were converted to missing data.")
+
+Pembroke State University had an IQR: Math value of -10 and was converted to missing data.
+
+Northwood University has a student/faculty ration of 91.80 and was converted to missing data
+
+St Leo College has a student/faculty ratio of 72.4 and was converted to missing data
+
+Rutgers at New Brunswich received 48094 applications and accepted 26330 but only has 4520 students enrolled. Converted all three to missing data
+
+c. Find the mean percentage of alumni who donate, for private and public schools.
+
+```{r}
+meanPub <- mean(usnews$`Pct alumni who donate`[usnews$Pub_or_Priv == "Public"], na.rm=T)
+meanPub <- as.vector(meanPub)
+```
+
+```{r}
+meanPriv <- mean(usnews$`Pct alumni who donate`[usnews$Pub_or_Priv == "Private"], na.rm=T)
+meanPriv <- as.vector(meanPriv)
+```
+
+d. Test whether there is evidence that a higher percentage of alumni from private schools donate to their schools, compared to alumni from public schools.
+
+- Hint:  In part c, we took the mean of this variable in each group.  What does this tell you about what type of hypothesis to use? two sample t-test
+
+```{r}
+t1 <- usnews$`Pct alumni who donate`[usnews$Pub_or_Priv == "Public"]
+t1 <- t1[!is.na(t1)]
+t2 <- usnews$`Pct alumni who donate`[usnews$Pub_or_Priv == "Private"]
+t2 <- t2[!is.na(t2)]
+```
+
+```{r}
+testResult <- t.test(t2, t1, alternative="greater")
+testResult
+```
+
+**State your conclusion** in context.
+
+H0: There's not higher percentage of donations from alumni between public and private schools
+
+Ha: There is a higher percentage  of donations from alumni between private and public schools
+
+Since the p-value < 2.2e-16 we can reject the null hypothesis and say that there is a higher percentage of alumni from private schools donating to their schools than public schools.
+
+e. Use `write_csv()` or `write.csv()` to save your updated data set.
+
+- If you are using `write.csv()`, consult the R documentation to set the arguments for the function.  Your output file should not have row names or row numbers.
+- After you save the file, open it in Excel, Notepad++, or a program of your choice to verify that the version you saved contains the updates you made in part b.
+
+```{r}
+write.csv(usnews, "usnewsR.csv", row.names = FALSE)
+```
+
+## Problem 2:  Current Population Survey
+
+The data set cps.csv contains data from the 1985 Current Population Survey.
+
+- Dataset:  "Wages from the Current Population Survey," http://www.macalester.edu/~kaplan/ism/, from Daniel Kaplan, *Statistical Modeling: A Fresh Approach.* Original source:  Berndt, ER.  *The Practice of Econometrics 1991.*  Addison-Wesley.
+
+- Metadata:  cps_metadata.pdf, from p. 418 of *Statistical Modeling: A Fresh Approach* by Daniel Kaplan.
+
+a. Read the data into R and plot wages versus education.
+```{r}
+cps <- read_csv("cps.csv")
+gf_point(wage ~ educ, data = cps)
+```
+
+**Comment** on the appropriateness of linear regression.
+The wage vs education plot seems like it may have a linear relationship and we're looking at how a variable only compares to one other variable
+
+b. Perform the linear regression and examine the diagnostic plots.
+```{r}
+cpsreg <- lm(wage ~ educ, data=cps)
+summary(cpsreg)
+```
+
+```{r}
+par(mfrow = c(2,2))
+plot(cpsreg)
+```
+
+**Explain** why transforming the wages variable is a good idea in this case.
+
+There's a lot of changes in variance in the Residuals vs Fitted plot so a transformation is a good idea.
+
+c. The variable `wage` has units of dollars/hour.  Create a new variable, `time`, equal to 1/`wage`.  (So `time` has units of hours/dollar, or the length of time a person must work to earn $1.00.)
+
+```{r}
+cps$time <- 1/cps$wage
+```
+
+d. Plot time versus education.  
+```{r}
+gf_point(time ~ educ, data = cps)
+```
+Comment on the appropriateness of linear regression.
+
+e. Perform the linear regression.
+```{r}
+timereg <- lm(time ~ educ, data = cps)
+summary(timereg)
+```
+
+Based on these results, are you happy with your decision to pursue a master's degree?  **Explain.**
+
+The regression makes it seem like the more education you have the more money you will end up making. I guess from that standpoint I'm glad I'm pursuing my master's even though its not really about the money for me.
+
+f. Examine the diagnostic plots.
+```{r}
+par(mfrow = c(2,2))
+plot(timereg)
+```
+
+**Which individuals** appear to be outliers on the residual vs. predicted plot?
+216, 507, 518
+Re-do the regression without those individuals.
+```{r}
+cps2 <- cps
+cps2[216,] <- NA
+cps2[507,] <- NA
+cps2[518,] <- NA
+
+timereg2 <- lm(time ~ educ, data = cps2)
+summary(timereg2)
+```
+
+```{r}
+par(mfrow = c(2,2))
+plot(timereg2)
+```
+
+**Did excluding** the outliers change your conclusion?
+
+No it did not. It still looks like the more education you have, the more money you'll end up making.
+
+- Submit your .Rmd file, your knitted .docx or .pd f (.pdf preferred), and your updated data set from problem 1e to GitHub.
